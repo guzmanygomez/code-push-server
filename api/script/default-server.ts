@@ -16,6 +16,19 @@ const domain = require("express-domain-middleware");
 import * as express from "express";
 import * as q from "q";
 
+declare global {
+  namespace Express {
+    export interface Session {
+      [key: string]: any;
+    }
+
+    export interface Request {
+      user: any;
+      session?: Session;
+    }
+  }
+}
+
 interface Secret {
   id: string;
   value: string;
