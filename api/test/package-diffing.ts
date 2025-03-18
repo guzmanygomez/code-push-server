@@ -105,7 +105,7 @@ function packageDiffTests(StorageType: new () => storage.Storage): void {
                 .on("error", (error: any): void => {
                   throw error;
                 })
-                .on("entry", (entry: yauzl.IEntry): void => {
+                .on("entry", (entry: yauzl.Entry): void => {
                   zipFile.openReadStream(entry, (error?: any, readStream?: stream.Readable): void => {
                     if (error) {
                       throw error;
@@ -171,9 +171,8 @@ function packageDiffTests(StorageType: new () => storage.Storage): void {
 
       packageDiffingUtils
         .generateDiffArchive(oldManifest, newManifest, TEST_ARCHIVE_WITH_FOLDERS_FILE_PATH)
-        .done((diffArchiveFilePath: string): void => {
+        .done((diffArchiveFilePath: string) => {
           fs.exists(diffArchiveFilePath, (exists: boolean) => {
-            console.warn("!!!!!!!!!!!!!!!!!!!!diffArchiveFilePath: " + diffArchiveFilePath);
             assert.ok(exists);
 
             // Now verify that the diff package contents are correct.
@@ -188,7 +187,7 @@ function packageDiffTests(StorageType: new () => storage.Storage): void {
                 .on("error", (error: any): void => {
                   throw error;
                 })
-                .on("entry", (entry: yauzl.IEntry): void => {
+                .on("entry", (entry: yauzl.Entry): void => {
                   zipFile.openReadStream(entry, (error?: any, readStream?: stream.Readable): void => {
                     if (error) {
                       throw error;

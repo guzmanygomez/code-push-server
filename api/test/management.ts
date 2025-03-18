@@ -462,13 +462,12 @@ function managementTests(useJsonStorage?: boolean): void {
   describe("DELETE sessions", (): void => {
     it("successfully deletes all session keys created by the specified machine name", (done): void => {
       const machineName = "test delete session";
-      let firstKeyName: string;
       let secondKeyName: string;
       let thirdKeyName: string;
       let newAccessKey = testUtils.makeStorageAccessKey();
       newAccessKey.createdBy = machineName;
       newAccessKey.isSession = true;
-      firstKeyName = newAccessKey.friendlyName;
+      const firstKeyName = newAccessKey.friendlyName;
       storage
         .addAccessKey(account.id, newAccessKey)
         .then(() => {
@@ -1318,8 +1317,7 @@ function managementTests(useJsonStorage?: boolean): void {
       });
 
       it("returns 409 if destination deployment has an unfinished rollout", (done) => {
-        let otherPackage: storage.Package;
-        otherPackage = testUtils.makePackage();
+        const otherPackage = testUtils.makePackage();
         otherPackage.blobUrl = "/resources/test.zip";
         otherPackage.description = packageDescription;
         otherPackage.isMandatory = true;
@@ -2212,6 +2210,7 @@ function managementTests(useJsonStorage?: boolean): void {
   // This function wraps the Supertest scaffolding for a simple, non-customizable Get
   function GET(
     url: string,
+    // eslint-disable-next-line no-unused-vars
     callback: (response: any, headers: any) => void,
     expect: number | Object = 200 /*OK*/,
     accessKeyOverride?: string
@@ -2222,8 +2221,9 @@ function managementTests(useJsonStorage?: boolean): void {
       .set("Authorization", `Bearer ${accessKeyOverride || accessKey.name}`)
       .end(function (err: any, result: any) {
         if (err) throw err;
+        let response: any = null;
         try {
-          var response = result.text ? JSON.parse(result.text) : null;
+          response = result.text ? JSON.parse(result.text) : null;
         } catch (ex) {
           // Ignore parsing error
         }
@@ -2234,6 +2234,7 @@ function managementTests(useJsonStorage?: boolean): void {
   function POST(
     url: string,
     objToSend: any,
+    // eslint-disable-next-line no-unused-vars
     callback: (location: string, resultBody?: any) => void,
     fileToUpload?: string,
     statusCode = 201 /* Created */

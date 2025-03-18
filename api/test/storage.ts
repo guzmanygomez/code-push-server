@@ -1183,7 +1183,7 @@ function storageTests(StorageType: new (...args: any[]) => storageTypes.Storage,
             return storage.updatePackageHistory(account.id, app.id, deployment.id, /*history*/ null);
           })
           .then(failOnCallSucceeded, (error: storageTypes.StorageError) => {
-            assert.equal(error.code, storageTypes.ErrorCode.Other);
+            assert.equal(error.code, storageTypes.ErrorCode.Invalid);
             return storage.getPackageHistory(account.id, app.id, deployment.id);
           })
           .then((actualPackageHistory: storageTypes.Package[]) => {

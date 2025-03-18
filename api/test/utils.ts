@@ -155,11 +155,8 @@ export function retrieveStringContentsFromUrl(url: string): Promise<string> {
   }
 
   return Promise((resolve) => {
-    const requestOptions: https.RequestOptions = {
-      path: encodeURI(url),
-    };
     protocol
-      .get(requestOptions, (response: http.IncomingMessage) => {
+      .get(url, (response: http.IncomingMessage) => {
         if (response.statusCode !== 200) {
           return null;
         }
