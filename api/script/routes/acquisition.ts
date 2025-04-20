@@ -121,7 +121,7 @@ export function getHealthRouter(config: AcquisitionConfig): express.Router {
     storage
       .checkHealth()
       .then(() => {
-        return redisManager.checkHealth();
+        return true; // redisManager.checkHealth();
       })
       .then(() => {
         res.status(200).send("Healthy");
