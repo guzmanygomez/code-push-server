@@ -59,7 +59,7 @@ function packageDiffTests(StorageType: new () => storage.Storage): void {
     packageDiffingUtils = new PackageDiffer(storage, /*maxPackagesToDiff*/ 5);
     const app = express();
     app.use("/", express.static(path.join(__dirname, "resources")));
-    const port = 3000;
+    const port = 3333;
 
     server = app.listen(port);
   });
