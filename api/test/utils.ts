@@ -158,9 +158,8 @@ export function retrieveStringContentsFromUrl(url: string): Promise<string> {
     protocol
       .get(url, (response: http.IncomingMessage) => {
         if (response.statusCode !== 200) {
-          return null;
+          return resolve(null);
         }
-
         makeStringFromStream(response).then((contents: string) => {
           resolve(contents);
         });

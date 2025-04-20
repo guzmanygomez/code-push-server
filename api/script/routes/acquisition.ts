@@ -17,7 +17,6 @@ import * as validationUtils from "../utils/validation";
 import * as q from "q";
 import * as queryString from "querystring";
 import * as URL from "url";
-import Promise = q.Promise;
 
 const METRICS_BREAKING_VERSION = "1.5.2-beta";
 
@@ -109,7 +108,7 @@ function createResponseUsingStorage(
       );
     }
 
-    return q<redis.CacheableResponse>(null);
+    return null;
   }
 }
 
@@ -128,7 +127,6 @@ export function getHealthRouter(config: AcquisitionConfig): express.Router {
         res.status(200).send("Healthy");
       })
       .catch((error: Error) => errorUtils.sendUnknownError(res, error, next))
-      .done();
   });
 
   return router;
@@ -196,8 +194,7 @@ export function getAcquisitionRouter(config: AcquisitionConfig): express.Router 
             throw redisError;
           }
         })
-        .catch((error: storageTypes.StorageError) => errorUtils.restErrorHandler(res, error, next))
-        .done();
+        .catch((error: storageTypes.StorageError) => errorUtils.restErrorHandler(res, error, next));
     };
   };
 
@@ -221,7 +218,7 @@ export function getAcquisitionRouter(config: AcquisitionConfig): express.Router 
     const sdkVersion: string = restHeaders.getSdkVersion(req);
     if (semver.valid(sdkVersion) && semver.gte(sdkVersion, METRICS_BREAKING_VERSION)) {
       // If previousDeploymentKey not provided, assume it is the same deployment key.
-      let redisUpdatePromise: q.Promise<void>;
+      let redisUpdatePromise: Promise<void>;
 
       if (req.body.label && req.body.status === redis.DEPLOYMENT_FAILED) {
         redisUpdatePromise = redisManager.incrementLabelStatusCount(deploymentKey, req.body.label, req.body.status);
@@ -242,8 +239,7 @@ export function getAcquisitionRouter(config: AcquisitionConfig): express.Router 
             redisManager.removeDeploymentKeyClientActiveLabel(previousDeploymentKey, clientUniqueId);
           }
         })
-        .catch((error: any) => errorUtils.sendUnknownError(res, error, next))
-        .done();
+        .catch((error: any) => errorUtils.sendUnknownError(res, error, next));
     } else {
       if (!clientUniqueId) {
         return errorUtils.sendMalformedRequestError(
@@ -268,8 +264,7 @@ export function getAcquisitionRouter(config: AcquisitionConfig): express.Router 
         .then(() => {
           res.sendStatus(200);
         })
-        .catch((error: any) => errorUtils.sendUnknownError(res, error, next))
-        .done();
+        .catch((error: any) => errorUtils.sendUnknownError(res, error, next));
     }
   };
 
@@ -287,7 +282,6 @@ export function getAcquisitionRouter(config: AcquisitionConfig): express.Router 
         res.sendStatus(200);
       })
       .catch((error: any) => errorUtils.sendUnknownError(res, error, next))
-      .done();
   };
 
   router.get("/updateCheck", updateCheck(false));

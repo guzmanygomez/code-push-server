@@ -3,14 +3,12 @@
 
 import * as assert from "assert";
 import * as shortid from "shortid";
-import * as q from "q";
 
 import { AzureStorage } from "../script/storage/azure-storage";
 import { JsonStorage } from "../script/storage/json-storage";
 import * as storageTypes from "../script/storage/storage";
 import * as utils from "./utils";
 
-import Promise = q.Promise;
 
 describe("JSON Storage", () => storageTests(JsonStorage));
 
@@ -35,7 +33,7 @@ function storageTests(StorageType: new (...args: any[]) => storageTypes.Storage,
 
   afterEach((): void => {
     if (storage instanceof JsonStorage) {
-      storage.dropAll().done();
+      storage.dropAll();
     }
   });
 
@@ -1128,7 +1126,7 @@ function storageTests(StorageType: new (...args: any[]) => storageTypes.Storage,
 
       beforeEach(() => {
         expectedPackageHistory = [];
-        let promiseChain: Promise<void> = q<void>(null);
+        let promiseChain: Promise<void> = Promise.resolve(null);
         let packageNumber = 1;
         for (let i = 1; i <= 3; i++) {
           promiseChain = promiseChain
@@ -1219,10 +1217,10 @@ function storageTests(StorageType: new (...args: any[]) => storageTypes.Storage,
         });
     });
 
-    it("can remove a blob", () => {
+    it("can remove a blob", (done) => {
       const fileContents = "test stream";
       let blobId: string;
-      return storage
+      storage
         .addBlob(shortid.generate(), utils.makeStreamFromString(fileContents), fileContents.length)
         .then((id: string) => {
           blobId = id;
@@ -1235,22 +1233,25 @@ function storageTests(StorageType: new (...args: any[]) => storageTypes.Storage,
           if (!blobUrl) {
             return null;
           }
-
+          console.warn("Blob URL: ", blobUrl);
           return utils.retrieveStringContentsFromUrl(blobUrl);
         })
-        .timeout(1000, "timeout")
+        // .timeout(1000, "timeout")
         .then(
           (retrievedContents: string) => {
+            console.warn("Blob URL: ", retrievedContents);
             assert.equal(null, retrievedContents);
           },
           (error: any) => {
+            console.warn("Error: ", error);
             if (error instanceof Error) {
               assert.equal(error.message, "timeout");
             } else {
               throw error;
             }
           }
-        );
+        )
+        .then(() => done());
     });
   });
 }

@@ -3,10 +3,8 @@
 
 import * as assert from "assert";
 import * as express from "express";
-import * as q from "q";
 import * as queryString from "querystring";
 import * as request from "supertest";
-import Promise = q.Promise;
 
 import * as defaultServer from "../script/default-server";
 import * as storage from "../script/storage/storage";
@@ -31,29 +29,27 @@ describe("Acquisition Rest API", () => {
   let redisManager: redis.RedisManager;
   let isAzureServer: boolean;
 
-  before((): q.Promise<void> => {
+  before((): Promise<void> => {
     const useJsonStorage: boolean = !process.env.TEST_AZURE_STORAGE && !process.env.AZURE_ACQUISITION_URL;
 
-    return q<void>(null)
+    return Promise.resolve()
       .then(() => {
         if (process.env.AZURE_ACQUISITION_URL) {
           serverUrl = process.env.AZURE_ACQUISITION_URL;
           isAzureServer = true;
           storageInstance = useJsonStorage ? new JsonStorage() : new AzureStorage();
         } else {
-          const deferred: q.Deferred<void> = q.defer<void>();
+          return new Promise<void>((resolve, reject) => {
+            defaultServer.start(function (err: Error, app: express.Express, serverStorage: storage.Storage) {
+              if (err) {
+                reject(err);
+              }
 
-          defaultServer.start(function (err: Error, app: express.Express, serverStorage: storage.Storage) {
-            if (err) {
-              deferred.reject(err);
-            }
-
-            server = app;
-            storageInstance = serverStorage;
-            deferred.resolve(null);
-          }, useJsonStorage);
-
-          return deferred.promise;
+              server = app;
+              storageInstance = serverStorage;
+              resolve();
+            }, useJsonStorage);
+          });
         }
       })
       .then(() => {
@@ -118,7 +114,7 @@ describe("Acquisition Rest API", () => {
   });
 
   after((): Promise<void> => {
-    return q(<void>null)
+    return Promise.resolve()
       .then(() => {
         if (storageInstance instanceof JsonStorage) {
           return storageInstance.dropAll();
@@ -1266,7 +1262,7 @@ describe("Acquisition Rest API", () => {
 
       it("returns 200 and increments the correct counters in Redis if SDK version is unspecified", (done) => {
         function sendReport(statusReport: string): Promise<void> {
-          return Promise<void>((resolve, reject) => {
+          return new Promise<void>((resolve, reject) => {
             request(server || serverUrl)
               .post("/reportStatus/deploy")
               .set("Content-Type", "application/json")
@@ -1340,7 +1336,7 @@ describe("Acquisition Rest API", () => {
 
       it("returns 200 and increments the correct counters in Redis when switching deployment keys if SDK version is >=1.5.2-beta", (done) => {
         function sendReport(statusReport: string): Promise<void> {
-          return Promise<void>((resolve, reject) => {
+          return new Promise<void>((resolve, reject) => {
             request(server || serverUrl)
               .post("/reportStatus/deploy")
               .set("Content-Type", "application/json")

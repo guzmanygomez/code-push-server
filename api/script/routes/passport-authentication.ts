@@ -8,7 +8,6 @@ const passportActiveDirectory = require("passport-azure-ad");
 import * as passportBearer from "passport-http-bearer";
 import * as passportGitHub from "passport-github2";
 import * as passportWindowsLive from "passport-windowslive";
-import * as q from "q";
 import * as superagent from "superagent"
 import rateLimit from "express-rate-limit";
 
@@ -18,8 +17,6 @@ import * as restHeaders from "../utils/rest-headers";
 import * as security from "../utils/security";
 import * as storage from "../storage/storage";
 import * as validationUtils from "../utils/validation";
-
-import Promise = q.Promise;
 
 export interface AuthenticationConfig {
   storage: storage.Storage;
@@ -74,8 +71,7 @@ export class PassportAuthentication {
           .then((accountId: string) => {
             done(/*err*/ null, { id: accountId });
           })
-          .catch((error: storage.StorageError): void => PassportAuthentication.storageErrorHandler(error, done))
-          .done();
+          .catch((error: storage.StorageError): void => PassportAuthentication.storageErrorHandler(error, done));
       })
     );
   }
@@ -317,7 +313,7 @@ export class PassportAuthentication {
           return;
         }
 
-        const issueAccessKey = (accountId: string): Promise<void> => {
+        const issueAccessKey = (accountId: string): void => {
           const now: number = new Date().getTime();
           const friendlyName: string = `Login-${now}`;
           const accessKey: storage.AccessKey = {
@@ -330,19 +326,22 @@ export class PassportAuthentication {
             isSession: true,
           };
 
-          return this._storageInstance.addAccessKey(accountId, accessKey).then((accessKeyId: string): void => {
+          this._storageInstance.addAccessKey(accountId, accessKey).then((accessKeyId: string): void => {
             const key: string = accessKey.name;
             req.session["accessKey"] = key;
             req.session["isNewAccount"] = action === "register";
 
             res.redirect("/accesskey");
+          }).catch((error: storage.StorageError): void => {
+            error.message = `Unexpected failure with action ${action}, provider ${providerName}, email ${emailAddress}, and message: ${error.message}`;
+            restErrorUtils.sendUnknownError(res, error, next);
           });
         };
 
         this._storageInstance
           .getAccountByEmail(emailAddress)
           .then(
-            (account: storage.Account): void | Promise<void> => {
+            (account: storage.Account): void => {
               const existingProviderId: string = PassportAuthentication.getProviderId(account, providerName);
               const isProviderValid: boolean = existingProviderId === user.id;
               switch (action) {
@@ -361,25 +360,30 @@ export class PassportAuthentication {
                   }
 
                   PassportAuthentication.setProviderId(account, providerName, user.id);
-                  return this._storageInstance.updateAccount(account.email, account).then(() => {
+                  this._storageInstance.updateAccount(account.email, account).then(() => {
                     res.render("message", {
                       message:
                         "You have successfully linked your account!<br/>You will now be able to use this provider to authenticate in the future.<br/>Please return to the CLI to continue.",
                     });
+                  }).catch((error: storage.StorageError): void => {
+                    error.message = `Unexpected failure with action ${action}, provider ${providerName}, email ${emailAddress}, and message: ${error.message}`;
+                    restErrorUtils.sendUnknownError(res, error, next);
                   });
+                  return;
                 case "login":
                   if (!isProviderValid) {
                     restErrorUtils.sendForbiddenPage(res, "You are not registered with the service using this provider account.");
                     return;
                   }
 
-                  return issueAccessKey(account.id);
+                  issueAccessKey(account.id);
+                  return;
                 default:
                   restErrorUtils.sendUnknownError(res, new Error(`Unrecognized action (${action})`), next);
                   return;
               }
             },
-            (error: storage.StorageError): void | Promise<void> => {
+            (error: storage.StorageError): void => {
               if (error.code !== storage.ErrorCode.NotFound) throw error;
 
               switch (action) {
@@ -404,20 +408,22 @@ export class PassportAuthentication {
                   };
                   PassportAuthentication.setProviderId(newUser, providerName, user.id);
 
-                  return this._storageInstance
-                    .addAccount(newUser)
-                    .then((accountId: string): Promise<void> => issueAccessKey(accountId));
+                  this._storageInstance.addAccount(newUser).then((accountId: string): void => {
+                    issueAccessKey(accountId);
+                  }).catch((error: storage.StorageError): void => {
+                    error.message = `Unexpected failure with action ${action}, provider ${providerName}, email ${emailAddress}, and message: ${error.message}`;
+                    restErrorUtils.sendUnknownError(res, error, next);
+                  });
+                  return;
                 default:
                   restErrorUtils.sendUnknownError(res, new Error(`Unrecognized action (${action})`), next);
                   return;
               }
             }
-          )
-          .catch((error: storage.StorageError): void => {
+          ).catch((error: storage.StorageError): void => {
             error.message = `Unexpected failure with action ${action}, provider ${providerName}, email ${emailAddress}, and message: ${error.message}`;
             restErrorUtils.sendUnknownError(res, error, next);
-          })
-          .done();
+          });
       }
     );
 

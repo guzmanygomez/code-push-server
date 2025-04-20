@@ -2,11 +2,7 @@
 // Licensed under the MIT License.
 
 import * as assert from "assert";
-import * as express from "express";
-import * as q from "q";
 import * as redis from "redis";
-
-import Promise = q.Promise;
 
 export const DEPLOYMENT_SUCCEEDED = "DeploymentSucceeded";
 export const DEPLOYMENT_FAILED = "DeploymentFailed";
@@ -74,14 +70,26 @@ class PromisifiedRedisClient {
 
   constructor(redisClient: redis.RedisClient) {
     this.execBatch = (redisBatchClient: any) => {
-      return q.ninvoke<any[]>(redisBatchClient, "exec");
+      return new Promise((resolve, reject) => {
+        redisBatchClient.exec((err: Error, result: any[]) => {
+          if (err) reject(err);
+          else resolve(result);
+        });
+      });
     };
 
     for (const functionName in this) {
       if (this.hasOwnProperty(functionName) && (<any>this)[functionName] === null) {
         const originalFunction = (<any>redisClient)[functionName];
         assert(!!originalFunction, "Binding a function that does not exist: " + functionName);
-        (<any>this)[functionName] = q.nbind(originalFunction, redisClient);
+        (<any>this)[functionName] = (...args: any[]) => {
+          return new Promise((resolve, reject) => {
+            originalFunction.call(redisClient, ...args, (err: Error, result: any) => {
+              if (err) reject(err);
+              else resolve(result);
+            });
+          });
+        };
       }
     }
   }
@@ -134,10 +142,10 @@ export class RedisManager {
 
   public checkHealth(): Promise<void> {
     if (!this.isEnabled) {
-      return q.reject<void>("Redis manager is not enabled");
+      return Promise.reject("Redis manager is not enabled");
     }
 
-    return q.all([this._promisifiedOpsClient.ping(), this._promisifiedMetricsClient.ping()]).spread<void>(() => {});
+    return Promise.all([this._promisifiedOpsClient.ping(), this._promisifiedMetricsClient.ping()]).then(() => {});
   }
 
   /**
@@ -148,15 +156,15 @@ export class RedisManager {
    */
   public getCachedResponse(expiryKey: string, url: string): Promise<CacheableResponse> {
     if (!this.isEnabled) {
-      return q<CacheableResponse>(null);
+      return Promise.resolve(null);
     }
 
     return this._promisifiedOpsClient.hget(expiryKey, url).then((serializedResponse: string): Promise<CacheableResponse> => {
       if (serializedResponse) {
         const response = <CacheableResponse>JSON.parse(serializedResponse);
-        return q<CacheableResponse>(response);
+        return Promise.resolve(response);
       } else {
-        return q<CacheableResponse>(null);
+        return Promise.resolve(null);
       }
     });
   }
@@ -169,7 +177,7 @@ export class RedisManager {
    */
   public setCachedResponse(expiryKey: string, url: string, response: CacheableResponse): Promise<void> {
     if (!this.isEnabled) {
-      return q<void>(null);
+      return Promise.resolve(null);
     }
 
     // Store response in cache with a timed expiry
@@ -193,7 +201,7 @@ export class RedisManager {
   // or 1 by default. If the field does not exist, it will be created with the value of 1.
   public incrementLabelStatusCount(deploymentKey: string, label: string, status: string): Promise<void> {
     if (!this.isEnabled) {
-      return q(<void>null);
+      return Promise.resolve(null);
     }
 
     const hash: string = Utilities.getDeploymentKeyLabelsHash(deploymentKey);
@@ -204,7 +212,7 @@ export class RedisManager {
 
   public clearMetricsForDeploymentKey(deploymentKey: string): Promise<void> {
     if (!this.isEnabled) {
-      return q(<void>null);
+      return Promise.resolve(null);
     }
 
     return this._setupMetricsClientPromise
@@ -221,7 +229,7 @@ export class RedisManager {
   // { "v1:DeploymentSucceeded": 123, "v1:DeploymentFailed": 4, "v1:Active": 123 ... }
   public getMetricsWithDeploymentKey(deploymentKey: string): Promise<DeploymentMetrics> {
     if (!this.isEnabled) {
-      return q(<DeploymentMetrics>null);
+      return Promise.resolve(null);
     }
 
     return this._setupMetricsClientPromise
@@ -242,7 +250,7 @@ export class RedisManager {
 
   public recordUpdate(currentDeploymentKey: string, currentLabel: string, previousDeploymentKey?: string, previousLabel?: string) {
     if (!this.isEnabled) {
-      return q(<void>null);
+      return Promise.resolve(null);
     }
 
     return this._setupMetricsClientPromise
@@ -267,7 +275,7 @@ export class RedisManager {
 
   public removeDeploymentKeyClientActiveLabel(deploymentKey: string, clientUniqueId: string) {
     if (!this.isEnabled) {
-      return q(<void>null);
+      return Promise.resolve(null);
     }
 
     return this._setupMetricsClientPromise
@@ -279,26 +287,26 @@ export class RedisManager {
   }
 
   public invalidateCache(expiryKey: string): Promise<void> {
-    if (!this.isEnabled) return q(<void>null);
+    if (!this.isEnabled) return Promise.resolve(null);
 
     return this._promisifiedOpsClient.del(expiryKey).then(() => {});
   }
 
   // For unit tests only
   public close(): Promise<void> {
-    const promiseChain: Promise<void> = q(<void>null);
+    const promiseChain: Promise<void> = Promise.resolve(null);
     if (!this._opsClient && !this._metricsClient) return promiseChain;
 
     return promiseChain
       .then(() => this._opsClient && this._promisifiedOpsClient.quit())
       .then(() => this._metricsClient && this._promisifiedMetricsClient.quit())
-      .then(() => <void>null);
+      .then(() => null);
   }
 
   /* deprecated */
   public getCurrentActiveLabel(deploymentKey: string, clientUniqueId: string): Promise<string> {
     if (!this.isEnabled) {
-      return q(<string>null);
+      return Promise.resolve(null);
     }
 
     return this._setupMetricsClientPromise.then(() =>
@@ -309,7 +317,7 @@ export class RedisManager {
   /* deprecated */
   public updateActiveAppForClient(deploymentKey: string, clientUniqueId: string, toLabel: string, fromLabel?: string): Promise<void> {
     if (!this.isEnabled) {
-      return q(<void>null);
+      return Promise.resolve(null);
     }
 
     return this._setupMetricsClientPromise
