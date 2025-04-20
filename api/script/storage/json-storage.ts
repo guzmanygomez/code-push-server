@@ -541,7 +541,6 @@ export class JsonStorage implements storage.Storage {
   public async getBlobUrl(blobId: string): Promise<string> {
     return this.getBlobServer().then((server: http.Server) => {
       const address = server.address();
-      console.warn("Blob server address: ", address);
       if (typeof address === "object" && address !== null) {
         return `http://${address.address}:${address.port}/${blobId}`;
       }
