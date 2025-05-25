@@ -1272,7 +1272,7 @@ export class AzureStorage implements storage.Storage {
     }
 
     if (tableBatch.length > 0) {
-      this._tableClient.submitTransaction(tableBatch);
+      await this._tableClient.submitTransaction(tableBatch);
     }
   }
 
