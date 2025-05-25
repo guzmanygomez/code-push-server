@@ -1243,7 +1243,7 @@ export class AzureStorage implements storage.Storage {
 
     if (entities.length === 0) {
       // Reject as 'not found' if we can't even find the parent entity
-      throw new Error("Entity not found");
+      throw storage.storageError(storage.ErrorCode.NotFound);
     }
 
     const objects: any[] = [];
