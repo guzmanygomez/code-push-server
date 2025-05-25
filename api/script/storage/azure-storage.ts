@@ -1300,11 +1300,11 @@ export class AzureStorage implements storage.Storage {
       errorCodeRaw = parsedMessage["odata.error"].code;
       errorMessage = parsedMessage["odata.error"].message.value;
     } catch (error) {
-      errorCodeRaw = azureError.code;
+      errorCodeRaw = azureError.code || azureError.details.errorCode;
       errorMessage = azureError.message;
     }
 
-    if (overrideMessage && overrideCondition == errorCodeRaw) {
+    if (overrideMessage && overrideCondition === errorCodeRaw) {
       errorMessage = overrideValue;
     }
 
