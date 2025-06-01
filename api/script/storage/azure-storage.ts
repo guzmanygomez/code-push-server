@@ -853,6 +853,10 @@ export class AzureStorage implements storage.Storage {
     let blobServiceClient: BlobServiceClient;
 
     if (process.env.EMULATED) {
+      if (accountName || accountKey) {
+        return Promise.reject("Cannot set accountName or accountKey when using the emulator.");
+      }
+
       const devConnectionString = "UseDevelopmentStorage=true";
 
       tableServiceClient = TableServiceClient.fromConnectionString(devConnectionString);
