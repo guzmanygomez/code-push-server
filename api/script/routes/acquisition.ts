@@ -93,13 +93,13 @@ function createResponseUsingStorage(
       errorUtils.sendMalformedRequestError(
         res,
         "An update check must include a valid deployment key - please check that your app has been " +
-          "configured correctly. To view available deployment keys, run 'code-push-standalone deployment ls <appName> -k'."
+        "configured correctly. To view available deployment keys, run 'code-push-standalone deployment ls <appName> -k'."
       );
     } else if (!validationUtils.isValidAppVersionField(updateRequest.appVersion)) {
       errorUtils.sendMalformedRequestError(
         res,
         "An update check must include a binary version that conforms to the semver standard (e.g. '1.0.0'). " +
-          "The binary version is normally inferred from the App Store/Play Store version configured with your app."
+        "The binary version is normally inferred from the App Store/Play Store version configured with your app."
       );
     } else {
       errorUtils.sendMalformedRequestError(
@@ -121,6 +121,8 @@ export function getHealthRouter(config: AcquisitionConfig): express.Router {
     storage
       .checkHealth()
       .then(() => {
+        // code-push-server-standalone does not use redis, so we need to return true
+        // It seems that microsoft use the RedisManager internally, but before they open-sourced it, they removed it
         return true; // redisManager.checkHealth();
       })
       .then(() => {
