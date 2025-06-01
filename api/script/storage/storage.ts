@@ -1,11 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import * as q from "q";
 import * as stream from "stream";
 import * as error from "../error";
-
-import Promise = q.Promise;
+import * as utils from "../utils/common";
 
 export enum ErrorCode {
   ConnectionFailed = 0,
@@ -239,9 +237,6 @@ export class NameResolver {
     }
   }
 
-  // Interface
-  public static findByName(items: App[], displayName: string): App;
-  public static findByName<T extends { name: string }>(items: T[], name: string): T;
   // Definition
   public static findByName<T extends { name: string }>(items: T[], name: string): T {
     if (!items.length) return null;
@@ -253,7 +248,8 @@ export class NameResolver {
       // Use general overload
       for (let i = 0; i < items.length; i++) {
         // For access keys, match both the "name" and "friendlyName" fields.
-        if (items[i].name === name || name === (<AccessKey>(<any>items[i])).friendlyName) {
+        const hashedName = utils.hashWithSHA256(name)
+        if (items[i].name === name || items[i].name === hashedName || name === (<AccessKey>(<any>items[i])).friendlyName) {
           return items[i];
         }
       }

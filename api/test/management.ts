@@ -5,7 +5,6 @@ import * as assert from "assert";
 import * as express from "express";
 import * as fs from "fs";
 import * as path from "path";
-import * as q from "q";
 import * as request from "supertest";
 import superagent = require("superagent");
 
@@ -46,28 +45,28 @@ function managementTests(useJsonStorage?: boolean): void {
   const packageHash: string = "99fb948da846f4ae552b6bd73ac1e12e4ae3a889159d607997a4aef4f197e7bb"; // resources/blob.zip
   const isTestingMetrics: boolean = !!(process.env.REDIS_HOST && process.env.REDIS_PORT);
 
-  before((): q.Promise<void> => {
+  before((): Promise<void> => {
     account = testUtils.makeAccount();
     otherAccount = testUtils.makeAccount();
 
-    return q<void>(null)
+    return Promise.resolve()
       .then(() => {
         if (process.env.AZURE_MANAGEMENT_URL) {
           serverUrl = process.env.AZURE_MANAGEMENT_URL;
           storage = useJsonStorage ? new JsonStorage() : new AzureStorage();
         } else {
           // use the middleware defined in DefaultServer
-          const deferred: q.Deferred<void> = q.defer<void>();
+          const deferred: Promise<void> = new Promise<void>((resolve, reject) => {
+            defaultServer.start(function (err: Error, app: express.Express, serverStorage: storage.Storage) {
+              if (err) reject(err);
 
-          defaultServer.start(function (err: Error, app: express.Express, serverStorage: storage.Storage) {
-            if (err) deferred.reject(err);
+              server = app;
+              storage = serverStorage;
+              resolve();
+            }, useJsonStorage);
+          });
 
-            server = app;
-            storage = serverStorage;
-            deferred.resolve(<void>null);
-          }, useJsonStorage);
-
-          return deferred.promise;
+          return deferred;
         }
       })
       .then(() => {
@@ -100,7 +99,7 @@ function managementTests(useJsonStorage?: boolean): void {
       });
   });
 
-  after((): q.Promise<void> => {
+  after((): Promise<void> => {
     return redisManager.close().then(() => {
       if (storage instanceof JsonStorage) {
         return storage.dropAll();
@@ -503,8 +502,7 @@ function managementTests(useJsonStorage?: boolean): void {
             );
           });
         })
-        .catch(done)
-        .done();
+        .catch(done);
     });
 
     it("returns 404 for a machine name that does not have any sessions associated with it", (done): void => {
@@ -657,7 +655,8 @@ function managementTests(useJsonStorage?: boolean): void {
 
               throw new Error("Failed to find newly created app.");
             })
-            .done(done, done);
+            .then(() => done())
+            .catch(done);
         });
       });
     });
@@ -838,7 +837,8 @@ function managementTests(useJsonStorage?: boolean): void {
 
               throw new Error("Failed to find newly created deployment.");
             })
-            .done(done, done);
+            .then(() => done())
+            .catch(done);
         });
       });
     });
@@ -1240,8 +1240,7 @@ function managementTests(useJsonStorage?: boolean): void {
             releasePackage.appVersion = "1.0.1";
             POST(url, { packageInfo: releasePackage }, done, differentPackage, 409);
           })
-          .catch(done)
-          .done();
+          .catch(done);
       });
 
       it("returns 201 and nullifies rollout for disabled releases", (done) => {
@@ -1271,13 +1270,13 @@ function managementTests(useJsonStorage?: boolean): void {
                   .then((packageHistory: storage.Package[]) => {
                     assert.strictEqual(packageHistory[1].rollout, null);
                   })
-                  .done(done, done);
+                  .then(() => done())
+                  .catch(done);
               },
               differentPackage
             );
           })
           .catch(done)
-          .done();
       });
 
       it("can release disabled update", (done) => {
@@ -1295,7 +1294,8 @@ function managementTests(useJsonStorage?: boolean): void {
                 assert.equal(packageHistory.length, 2);
                 assert.equal(packageHistory[1].isDisabled, true);
               })
-              .done(done, done);
+              .then(() => done())
+              .catch(done);
           },
           differentPackage
         );
@@ -1333,8 +1333,7 @@ function managementTests(useJsonStorage?: boolean): void {
             const url: string = `/apps/${app.name}/deployments/${deployment.name}/promote/${otherDeployment.name}`;
             POST(url, { packageInfo: {} }, done, null, 409);
           })
-          .catch(done)
-          .done();
+          .catch(done);
       });
 
       it("returns 409 if the promoted package is identical", (done) => {
@@ -1346,8 +1345,7 @@ function managementTests(useJsonStorage?: boolean): void {
             const url: string = `/apps/${app.name}/deployments/${deployment.name}/promote/${otherDeployment.name}`;
             POST(url, { packageInfo: {} }, done, null, 409);
           })
-          .catch(done)
-          .done();
+          .catch(done);
       });
 
       it("returns 409 if promotion of identical package for same range", (done) => {
@@ -1359,8 +1357,7 @@ function managementTests(useJsonStorage?: boolean): void {
             const url: string = `/apps/${app.name}/deployments/${deployment.name}/promote/${otherDeployment.name}`;
             POST(url, { packageInfo: {} }, done, null, 409);
           })
-          .catch(done)
-          .done();
+          .catch(done);
       });
 
       it("returns 409 if promotion of identical package for similar range", (done) => {
@@ -1375,8 +1372,7 @@ function managementTests(useJsonStorage?: boolean): void {
             const url: string = `/apps/${app.name}/deployments/${deployment.name}/promote/${otherDeployment.name}`;
             POST(url, { packageInfo: {} }, done, null, 409);
           })
-          .catch(done)
-          .done();
+          .catch(done);
       });
 
       it("returns 409 if promotion of identical package of same app version in target deployment's release history", (done) => {
@@ -1395,8 +1391,7 @@ function managementTests(useJsonStorage?: boolean): void {
             const url: string = `/apps/${app.name}/deployments/${deployment.name}/promote/${otherDeployment.name}`;
             POST(url, { packageInfo: {} }, done, null, 409);
           })
-          .catch(done)
-          .done();
+          .catch(done);
       });
 
       it("returns 409 if promotion of identical package for app version in old version's range in target deployment's history", (done) => {
@@ -1415,8 +1410,7 @@ function managementTests(useJsonStorage?: boolean): void {
             const url: string = `/apps/${app.name}/deployments/${deployment.name}/promote/${otherDeployment.name}`;
             POST(url, { packageInfo: {} }, done, null, 409);
           })
-          .catch(done)
-          .done();
+          .catch(done);
       });
 
       it("returns 400 if rollout value is invalid", (done) => {
@@ -1447,7 +1441,8 @@ function managementTests(useJsonStorage?: boolean): void {
                   assert.equal(deployment.package.description, newDescription);
                   assert.equal(deployment.package.isMandatory, newIsMandatory);
                 })
-                .done(done, done);
+                .then(() => done())
+                .catch(done);
             });
           },
           getTestResource("test.zip")
@@ -1490,7 +1485,8 @@ function managementTests(useJsonStorage?: boolean): void {
                       assert.strictEqual(promotedPackage.rollout, null);
                       assert.equal(promotedPackage.packageHash, result.package.packageHash);
                     })
-                    .done(done, done);
+                    .then(() => done())
+                    .catch(done);
                 });
               },
               getTestResource("test.zip")
@@ -1599,7 +1595,7 @@ function managementTests(useJsonStorage?: boolean): void {
         beforeEach(function (done) {
           otherApp = testUtils.makeStorageApp();
           otherDeployment = testUtils.makeStorageDeployment();
-          return storage
+          storage
             .addApp(otherAccount.id, otherApp)
             .then((addedApp: storage.App) => {
               otherApp.id = addedApp.id;
@@ -1820,8 +1816,7 @@ function managementTests(useJsonStorage?: boolean): void {
           .then(() => {
             POST(url, /*body=*/ {}, done, null, 409);
           })
-          .catch(done)
-          .done();
+          .catch(done);
       });
 
       it("returns 404 if rolling back to a label that does not exist", (done) => {
@@ -1834,8 +1829,7 @@ function managementTests(useJsonStorage?: boolean): void {
           .then(() => {
             POST(url, /*body=*/ {}, done, null, 404);
           })
-          .catch(done)
-          .done();
+          .catch(done);
       });
 
       it("returns 409 if rolling back to a package that is already the latest", (done) => {
@@ -1848,8 +1842,7 @@ function managementTests(useJsonStorage?: boolean): void {
           .then(() => {
             POST(url, /*body=*/ {}, done, null, 409);
           })
-          .catch(done)
-          .done();
+          .catch(done);
       });
 
       it("returns 409 if rolling back to a label corresponding to a different app version", (done) => {
@@ -1867,8 +1860,7 @@ function managementTests(useJsonStorage?: boolean): void {
           .then(() => {
             POST(url, /*body=*/ {}, done, null, 409);
           })
-          .catch(done)
-          .done();
+          .catch(done);
       });
 
       it("rolls back to previous package", (done) => {
@@ -1891,8 +1883,7 @@ function managementTests(useJsonStorage?: boolean): void {
               });
             });
           })
-          .catch(done)
-          .done();
+          .catch(done);
       });
 
       it("rolls back to specific label", (done) => {
@@ -1920,8 +1911,7 @@ function managementTests(useJsonStorage?: boolean): void {
               });
             });
           })
-          .catch(done)
-          .done();
+          .catch(done);
       });
 
       it("can rollback to disabled release", (done) => {
@@ -1952,8 +1942,7 @@ function managementTests(useJsonStorage?: boolean): void {
               });
             });
           })
-          .catch(done)
-          .done();
+          .catch(done);
       });
 
       it("rolls back with previous diff information", (done) => {
@@ -1997,8 +1986,7 @@ function managementTests(useJsonStorage?: boolean): void {
               });
             });
           })
-          .catch(done)
-          .done();
+          .catch(done);
       });
 
       it("rollback clears previous release's rollout", (done) => {
@@ -2030,8 +2018,7 @@ function managementTests(useJsonStorage?: boolean): void {
               });
             });
           })
-          .catch(done)
-          .done();
+          .catch(done);
       });
     });
 

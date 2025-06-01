@@ -30,17 +30,12 @@ export function convertObjectToSnakeCase(obj: any): any {
 }
 
 export async function streamToBuffer(readableStream: Readable): Promise<ArrayBuffer> {
-  return new Promise<ArrayBuffer>((resolve, reject) => {
-    streamToArray(readableStream, (err: Error | null, arr: Array<Buffer | Uint8Array>) => {
-      if (err) {
-        reject(err);
-      } else {
-        const buffers = arr.map((chunk) => (Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
-        const concatenatedBuffer = Buffer.concat(buffers);
-        resolve(concatenatedBuffer.buffer);
-      }
-    });
-  });
+  const buffers = [];
+  for await (const data of readableStream) {
+    buffers.push(data);
+  }
+  const finalBuffer = Buffer.concat(buffers);
+  return finalBuffer;
 }
 
 export function hashWithSHA256(input: string): string {
