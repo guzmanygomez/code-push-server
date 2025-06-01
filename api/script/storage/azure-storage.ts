@@ -1002,8 +1002,8 @@ export class AzureStorage implements storage.Storage {
 
     let unwrapped = includeKey ? { partitionKey, rowKey, ...rest } : rest;
 
-    if (typeof createdTime === "bigint") {
-      unwrapped = { ...unwrapped, createdTime: Number(createdTime) };
+    if (typeof createdTime === "number") {
+      unwrapped = { ...unwrapped, createdTime };
     }
 
     return unwrapped;
