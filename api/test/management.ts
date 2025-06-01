@@ -1595,7 +1595,7 @@ function managementTests(useJsonStorage?: boolean): void {
         beforeEach(function (done) {
           otherApp = testUtils.makeStorageApp();
           otherDeployment = testUtils.makeStorageDeployment();
-          return storage
+          storage
             .addApp(otherAccount.id, otherApp)
             .then((addedApp: storage.App) => {
               otherApp.id = addedApp.id;
