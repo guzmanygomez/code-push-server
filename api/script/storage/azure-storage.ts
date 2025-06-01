@@ -358,6 +358,13 @@ export class AzureStorage implements storage.Storage {
         return this.removeAllCollaboratorsAppPointers(accountId, appId);
       })
       .then(() => {
+        return this.getDeployments(accountId, appId);
+      })
+      .then((deployments: storage.Deployment[]) => {
+        // We need to remove all deployments before removing the app, otherwise the blob storage will return empty array
+        return Promise.all(deployments.map((deployment: storage.Deployment) => this.removeDeployment(accountId, appId, deployment.id)));
+      })
+      .then(() => {
         return this.cleanUpByAppHierarchy(appId);
       })
       .catch(AzureStorage.azureErrorHandler);

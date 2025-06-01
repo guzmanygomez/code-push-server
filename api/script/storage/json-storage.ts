@@ -251,19 +251,19 @@ export class JsonStorage implements storage.Storage {
 
     delete this.appToDeploymentsMap[appId];
 
-      const app: storage.App = clone(this.apps[appId]);
-      const collaborators: storage.CollaboratorMap = app.collaborators;
-      Object.keys(collaborators).forEach((emailKey: string) => {
-        this.removeAppPointer(collaborators[emailKey].accountId, appId);
-      });
-      delete this.apps[appId];
+    const app: storage.App = clone(this.apps[appId]);
+    const collaborators: storage.CollaboratorMap = app.collaborators;
+    Object.keys(collaborators).forEach((emailKey: string) => {
+      this.removeAppPointer(collaborators[emailKey].accountId, appId);
+    });
+    delete this.apps[appId];
 
-      delete this.appToAccountMap[appId];
-      const accountApps = this.accountToAppsMap[accountId];
-      accountApps.splice(accountApps.indexOf(appId), 1);
+    delete this.appToAccountMap[appId];
+    const accountApps = this.accountToAppsMap[accountId];
+    accountApps.splice(accountApps.indexOf(appId), 1);
 
-      this.saveStateAsync();
-      return null;
+    this.saveStateAsync();
+    return null;
   }
 
   public async updateApp(accountId: string, app: storage.App, ensureIsOwner: boolean = true): Promise<void> {

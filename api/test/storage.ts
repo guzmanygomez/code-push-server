@@ -41,10 +41,10 @@ function storageTests(StorageType: new (...args: any[]) => storageTypes.Storage,
   describe("Storage management", () => {
     it("should be healthy if and only if running Azure storage", () => {
       return storage.checkHealth().then(
-        /*returnedHealthy*/ () => {
+        /*returnedHealthy*/() => {
           assert.equal(StorageType, AzureStorage, "Should only return healthy if running Azure storage");
         },
-        /*returnedUnhealthy*/ () => {
+        /*returnedUnhealthy*/() => {
           assert.equal(StorageType, JsonStorage, "Should only return unhealthy if running JSON storage");
         }
       );
@@ -57,7 +57,7 @@ function storageTests(StorageType: new (...args: any[]) => storageTypes.Storage,
           .reinitialize("wrongaccount", "wrongkey")
           .then(
             failOnCallSucceeded,
-            /*returnedUnhealthy*/ () => {
+            /*returnedUnhealthy*/() => {
               if (!process.env.EMULATED && process.env.AZURE_STORAGE_ACCOUNT && process.env.AZURE_STORAGE_ACCESS_KEY) {
                 return azureStorage.reinitialize(process.env.AZURE_STORAGE_ACCOUNT, process.env.AZURE_STORAGE_ACCESS_KEY);
               } else {
@@ -209,7 +209,7 @@ function storageTests(StorageType: new (...args: any[]) => storageTypes.Storage,
         .addAccessKey(account.id, accessKey)
         .then((addedAccessKeyId: string): Promise<void> => {
           accessKey.id = addedAccessKeyId;
-          accessKey.friendlyName = "updated description";          
+          accessKey.friendlyName = "updated description";
           if (StorageType === AzureStorage) {
             accessKey.name = hashWithSHA256(accessKey.name);
           }
