@@ -177,7 +177,9 @@ function storageTests(StorageType: new (...args: any[]) => storageTypes.Storage,
         .then((addedAccessKeyId: string): Promise<void> => {
           accessKey.id = addedAccessKeyId;
           accessKey.friendlyName = "updated description";
-
+          if (StorageType === AzureStorage) {
+            accessKey.name = hashWithSHA256(accessKey.name);
+          }
           return storage.updateAccessKey(account.id, accessKey);
         })
         .then((): Promise<storageTypes.AccessKey> => {
@@ -207,7 +209,10 @@ function storageTests(StorageType: new (...args: any[]) => storageTypes.Storage,
         .addAccessKey(account.id, accessKey)
         .then((addedAccessKeyId: string): Promise<void> => {
           accessKey.id = addedAccessKeyId;
-          accessKey.friendlyName = "updated description";
+          accessKey.friendlyName = "updated description";          
+          if (StorageType === AzureStorage) {
+            accessKey.name = hashWithSHA256(accessKey.name);
+          }
 
           expectedResult = JSON.stringify(accessKey);
 
