@@ -8,6 +8,7 @@ import { AzureStorage } from "../script/storage/azure-storage";
 import { JsonStorage } from "../script/storage/json-storage";
 import * as storageTypes from "../script/storage/storage";
 import * as utils from "./utils";
+import { hashWithSHA256 } from "../script/utils/common";
 
 
 describe("JSON Storage", () => storageTests(JsonStorage));
@@ -98,7 +99,11 @@ function storageTests(StorageType: new (...args: any[]) => storageTypes.Storage,
           return storage.getAccessKey(account.id, accessKeyId);
         })
         .then((retrievedAccessKey: storageTypes.AccessKey): void => {
-          assert.equal(retrievedAccessKey.name, accessKey.name);
+          if (StorageType === AzureStorage) {
+            assert.equal(retrievedAccessKey.name, hashWithSHA256(accessKey.name));
+          } else {
+            assert.equal(retrievedAccessKey.name, accessKey.name);
+          }
           assert.equal(retrievedAccessKey.friendlyName, accessKey.friendlyName);
         });
     });
@@ -139,7 +144,11 @@ function storageTests(StorageType: new (...args: any[]) => storageTypes.Storage,
         })
         .then((accessKeys: storageTypes.AccessKey[]): void => {
           assert.equal(1, accessKeys.length);
-          assert.equal(accessKeys[0].name, accessKey.name);
+          if (StorageType === AzureStorage) {
+            assert.equal(accessKeys[0].name, hashWithSHA256(accessKey.name));
+          } else {
+            assert.equal(accessKeys[0].name, accessKey.name);
+          }
           assert.equal(accessKeys[0].friendlyName, accessKey.friendlyName);
         });
     });
