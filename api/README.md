@@ -53,6 +53,13 @@ The project supports both mocked JSON storage tests and Azure storage tests.
 
 1. Set the environment variables as described in the [Local Development Steps](#steps), and start the server.
 
+   ```bash
+   cp .env.example .env
+   npm install
+   npm run build
+   npm run start:env
+   ```
+
 2. Once the server is running, run the tests from a separate terminal:
 
    ```bash
