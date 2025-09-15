@@ -14,3 +14,4 @@ run:
   env:
     - name: NODE_ENV
       value: production
+EOF
