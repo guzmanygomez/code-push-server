@@ -3,9 +3,16 @@ runtime: nodejs18
 build:
   commands:
     build:
-      - npm install
+      - echo "=== Starting build process ==="
+      - npm install --include=dev
+      - echo "=== Dependencies installed ==="
       - npm run clean || echo "Clean step skipped"
+      - echo "=== Starting TypeScript compilation ==="
       - npm run build
+      - echo "=== Build completed, checking output ==="
+      - ls -la bin/ || echo "bin directory not found after build"
+      - ls -la bin/script/ || echo "bin/script directory not found after build"
+      - echo "=== Build process finished ==="
 run:
   runtime-version: 18
   command: npm start
