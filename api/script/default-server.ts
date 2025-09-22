@@ -176,6 +176,17 @@ export function start(done: (err?: any, server?: express.Express, storage?: Stor
             });
           });
 
+          // Add a test route to verify /v0.1 routing
+          app.get("/v0.1/test", (req, res) => {
+            res.send({ message: "v0.1 routing works!" });
+          });
+
+          // Add a simple apps route for testing
+          app.post("/v0.1/apps", (req, res) => {
+            console.log("SIMPLE APPS ROUTE HIT:", req.body);
+            res.send({ message: "Simple apps route works", app: { name: req.body.name } });
+          });
+
           app.use((req, res, next) => {
             console.log(`DEBUG REQUEST: ${req.method} ${req.path}`);
             let userId: string = "default-user";
