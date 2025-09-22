@@ -176,6 +176,16 @@ export function start(done: (err?: any, server?: express.Express, storage?: Stor
             });
           });
 
+          // Test routes directly on main app
+          app.get("/debug-test", (req, res) => {
+            res.send({ message: "Direct routing works!" });
+          });
+
+          app.post("/debug-apps", (req, res) => {
+            console.log("DIRECT APPS ROUTE HIT:", req.body);
+            res.send({ message: "Direct apps route works", app: { name: req.body.name } });
+          });
+
           app.use((req, res, next) => {
             console.log(`DEBUG REQUEST: ${req.method} ${req.path}`);
             let userId: string = "default-user";
