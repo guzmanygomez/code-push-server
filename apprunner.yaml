@@ -4,12 +4,13 @@ build:
   commands:
     build:
       - npm install
-      - npm run build || echo "No build script, continuing..."
+      - npm run clean || echo "Clean step skipped"
+      - npm run build
 run:
   runtime-version: 18
   command: npm start
   network:
-    port: 3000
+    port: 8080
     env: PORT
   env:
     - name: NODE_ENV
