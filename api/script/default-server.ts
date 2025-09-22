@@ -166,10 +166,10 @@ export function start(done: (err?: any, server?: express.Express, storage?: Stor
 
             next();
           });
-          app.use(fileUploadMiddleware, api.management({ storage: storage, redisManager: redisManager }));
+          app.use("/v0.1", fileUploadMiddleware, api.management({ storage: storage, redisManager: redisManager }));
         } else {
           app.use(auth.router());
-          app.use(auth.authenticate, fileUploadMiddleware, api.management({ storage: storage, redisManager: redisManager }));
+          app.use("/v0.1", auth.authenticate, fileUploadMiddleware, api.management({ storage: storage, redisManager: redisManager }));
         }
       } else {
         app.use(auth.legacyRouter());
