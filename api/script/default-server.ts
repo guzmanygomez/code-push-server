@@ -153,55 +153,19 @@ export function start(done: (err?: any, server?: express.Express, storage?: Stor
       if (process.env.DISABLE_MANAGEMENT !== "true") {
         if (process.env.DEBUG_DISABLE_AUTH === "true") {
           console.log("=== DEBUG MODE ENABLED ===");
-          console.log("Access Key:", process.env.DEBUG_ACCESS_KEY || "debug-key-12345");
-          console.log("User ID:", process.env.DEBUG_USER_ID || "default-user");
-          console.log("========================");
-
-          // Create debug user account
-          storage.addAccount({ email: "debug@example.com" }).then((accountId) => {
-            console.log("Debug account created with ID:", accountId);
-          }).catch((err) => {
-            console.log("Debug account already exists or error:", err.message);
-          });
 
           // Add debug authentication endpoints
           app.get("/authenticated", (req, res) => {
             res.send({ authenticated: true });
           });
 
-          app.post("/accessKeys", (req, res) => {
-            res.send({ 
-              name: req.body.friendlyName || req.body.name || "debug-key",
-              key: process.env.DEBUG_ACCESS_KEY || "debug-key-12345"
-            });
-          });
-
-          // Test routes directly on main app
-          app.get("/debug-test", (req, res) => {
-            res.send({ message: "Direct routing works!" });
-          });
-
-          app.post("/debug-apps", (req, res) => {
-            console.log("DIRECT APPS ROUTE HIT:", req.body);
-            res.send({ message: "Direct apps route works", app: { name: req.body.name } });
-          });
-
           app.use((req, res, next) => {
-            console.log(`DEBUG REQUEST: ${req.method} ${req.path}`);
-            let userId: string = "default-user";
-            if (process.env.DEBUG_USER_ID) {
-              userId = process.env.DEBUG_USER_ID;
-            }
-
             req.user = {
-              id: userId,
+              id: "default-user",
             };
-            
-            console.log("DEBUG USER SET:", req.user);
             next();
           });
 
-          // Simplified approach - just use the management router without modifications for now
           app.use("/v0.1", fileUploadMiddleware, api.management({ storage: storage, redisManager: redisManager }));
         } else {
           app.use(auth.router());
