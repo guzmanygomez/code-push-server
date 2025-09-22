@@ -16,7 +16,6 @@ build:
       - ls -la bin/script/ || echo "bin/script directory not found after build"
       - echo "=== Build process finished ==="
 run:
-  runtime-version: 18.20.8
   command: npm start
   network:
     port: 8080
