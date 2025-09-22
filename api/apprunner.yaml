@@ -4,6 +4,8 @@ build:
   commands:
     build:
       - echo "=== Starting build process ==="
+      - echo "Node version: $(node --version)"
+      - echo "NPM version: $(npm --version)"
       - npm install --include=dev
       - echo "=== Dependencies installed ==="
       - npm run clean || echo "Clean step skipped"
