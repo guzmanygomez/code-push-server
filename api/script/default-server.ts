@@ -157,6 +157,18 @@ export function start(done: (err?: any, server?: express.Express, storage?: Stor
           console.log("User ID:", process.env.DEBUG_USER_ID || "default-user");
           console.log("========================");
 
+          // Add debug authentication endpoints
+          app.get("/authenticated", (req, res) => {
+            res.send({ authenticated: true });
+          });
+
+          app.post("/accessKeys", (req, res) => {
+            res.send({ 
+              name: req.body.friendlyName || req.body.name || "debug-key",
+              key: process.env.DEBUG_ACCESS_KEY || "debug-key-12345"
+            });
+          });
+
           app.use((req, res, next) => {
             let userId: string = "default-user";
             if (process.env.DEBUG_USER_ID) {
