@@ -157,6 +157,13 @@ export function start(done: (err?: any, server?: express.Express, storage?: Stor
           console.log("User ID:", process.env.DEBUG_USER_ID || "default-user");
           console.log("========================");
 
+          // Create debug user account
+          storage.addAccount({ email: "debug@example.com" }).then((accountId) => {
+            console.log("Debug account created with ID:", accountId);
+          }).catch((err) => {
+            console.log("Debug account already exists or error:", err.message);
+          });
+
           // Add debug authentication endpoints
           app.get("/authenticated", (req, res) => {
             res.send({ authenticated: true });
@@ -170,6 +177,7 @@ export function start(done: (err?: any, server?: express.Express, storage?: Stor
           });
 
           app.use((req, res, next) => {
+            console.log(`DEBUG REQUEST: ${req.method} ${req.path}`);
             let userId: string = "default-user";
             if (process.env.DEBUG_USER_ID) {
               userId = process.env.DEBUG_USER_ID;
@@ -178,7 +186,8 @@ export function start(done: (err?: any, server?: express.Express, storage?: Stor
             req.user = {
               id: userId,
             };
-
+            
+            console.log("DEBUG USER SET:", req.user);
             next();
           });
           app.use("/v0.1", fileUploadMiddleware, api.management({ storage: storage, redisManager: redisManager }));

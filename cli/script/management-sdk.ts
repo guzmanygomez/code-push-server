@@ -489,7 +489,9 @@ class AccountManager {
     contentType: string
   ): Promise<JsonResponse> {
     return Promise<JsonResponse>((resolve, reject, notify) => {
-      let request: superagent.Request<any> = (<any>superagent)[method](this._serverUrl + endpoint);
+      // Add /v0.1 prefix for management API endpoints, except for /authenticated
+      const apiEndpoint = endpoint === "/authenticated" ? endpoint : "/v0.1" + endpoint;
+      let request: superagent.Request<any> = (<any>superagent)[method](this._serverUrl + apiEndpoint);
 
       this.attachCredentials(request);
 
