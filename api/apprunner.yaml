@@ -23,7 +23,9 @@ run:
   env:
     - name: NODE_ENV
       value: production
-    - name: DEBUG
-      value: "*"
     - name: USE_JSON_STORAGE
       value: "true"
+    - name: DEBUG_DISABLE_AUTH
+      value: "true"
+    - name: DEBUG_USER_ID
+      value: "default-user"
