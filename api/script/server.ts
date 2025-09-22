@@ -7,6 +7,8 @@ import * as defaultServer from "./default-server";
 const https = require("https");
 const fs = require("fs");
 
+const useJsonStorage = process.env.USE_JSON_STORAGE === "true";
+
 defaultServer.start(function (err: Error, app: express.Express) {
   if (err) {
     throw err;
@@ -34,4 +36,4 @@ defaultServer.start(function (err: Error, app: express.Express) {
   }
 
   server.setTimeout(0);
-});
+}, useJsonStorage);
