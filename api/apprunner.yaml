@@ -28,6 +28,16 @@ run:
     - name: DEBUG_DISABLE_AUTH
       value: "true"
     - name: DEBUG_USER_ID
-      value: "default-user"
+      value: "default"
     - name: DEBUG_ACCESS_KEY
       value: "debug-key-12345"
+    - name: SERVER_URL
+      value: "https://hvnqcck5ut.ap-southeast-2.awsapprunner.com"
+    - name: DISABLE_MANAGEMENT
+      value: "false"
+    - name: DISABLE_ACQUISITION
+      value: "false"
+    - name: ENABLE_ACCOUNT_REGISTRATION
+      value: "true"
+    - name: LOGGING
+      value: "true"
