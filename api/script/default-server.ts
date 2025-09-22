@@ -152,44 +152,15 @@ export function start(done: (err?: any, server?: express.Express, storage?: Stor
 
       if (process.env.DISABLE_MANAGEMENT !== "true") {
         if (process.env.DEBUG_DISABLE_AUTH === "true") {
-          // Create debug user and access key if they don't exist
-          storage.getAccount("default-user").catch(() => {
-            console.log("Creating debug user account...");
-            return storage.addAccount({ email: "debug@example.com" });
-          }).then((accountId) => {
-            const userId = accountId || "default-user";
-            console.log("Debug user account ready:", userId);
-            
-            // Create a debug access key
-            return storage.getAccessKeys(userId).then((keys) => {
-              if (keys.length === 0) {
-                console.log("Creating debug access key...");
-                return storage.addAccessKey(userId, {
-                  name: "debug-key",
-                  createdTime: Date.now(),
-                  createdBy: "debug@example.com",
-                  expires: 0
-                }).then((keyId) => {
-                  console.log("Debug access key created with ID:", keyId);
-                  return storage.getAccessKey(userId, keyId);
-                }).then((accessKey) => {
-                  console.log("=== DEBUG ACCESS KEY ===");
-                  console.log("Key:", accessKey.name);
-                  console.log("Value:", keyId); // The keyId is the actual access key value
-                  console.log("========================");
-                });
-              }
-            });
-          }).catch((err) => {
-            console.error("Error setting up debug account:", err);
-          });
+          console.log("=== DEBUG MODE ENABLED ===");
+          console.log("Access Key:", process.env.DEBUG_ACCESS_KEY || "debug-key-12345");
+          console.log("User ID:", process.env.DEBUG_USER_ID || "default-user");
+          console.log("========================");
 
           app.use((req, res, next) => {
             let userId: string = "default-user";
             if (process.env.DEBUG_USER_ID) {
               userId = process.env.DEBUG_USER_ID;
-            } else {
-              console.log("No DEBUG_USER_ID environment variable configured. Using 'default-user' as user id");
             }
 
             req.user = {

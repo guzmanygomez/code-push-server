@@ -29,3 +29,5 @@ run:
       value: "true"
     - name: DEBUG_USER_ID
       value: "default-user"
+    - name: DEBUG_ACCESS_KEY
+      value: "debug-key-12345"
