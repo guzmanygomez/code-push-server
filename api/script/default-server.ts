@@ -6,7 +6,7 @@ import { AzureStorage } from "./storage/azure-storage";
 import { fileUploadMiddleware } from "./file-upload-manager";
 import { JsonStorage } from "./storage/json-storage";
 import { RedisManager } from "./redis-manager";
-import { Storage } from "./storage/storage";
+import { Storage, Account, AccessKey } from "./storage/storage";
 import { Response } from "express";
 const { DefaultAzureCredential } = require("@azure/identity");
 const { SecretClient } = require("@azure/keyvault-secrets");
@@ -34,6 +34,57 @@ interface Secret {
   value: string;
 }
 
+const DEFAULT_DEBUG_ACCESS_KEY_TTL_MS = 1000 * 60 * 60 * 24 * 60; // 60 days
+
+async function ensureDebugAccount(storage: Storage): Promise<string> {
+  const email = process.env.DEBUG_USER_EMAIL || "debug@example.com";
+  const name = process.env.DEBUG_USER_NAME || email;
+  const accessKeyValue = process.env.DEBUG_ACCESS_KEY || "debug-key-12345";
+  const friendlyName = process.env.DEBUG_ACCESS_KEY_NAME || "debug";
+  const createdBy = process.env.DEBUG_ACCESS_KEY_CREATED_BY || "debug-bootstrap";
+  const ttl = process.env.DEBUG_ACCESS_KEY_TTL_MS
+    ? parseInt(process.env.DEBUG_ACCESS_KEY_TTL_MS, 10)
+    : DEFAULT_DEBUG_ACCESS_KEY_TTL_MS;
+
+  const now = Date.now();
+
+  let account = await storage.getAccountByEmail(email).catch(() => undefined);
+  let accountId: string;
+
+  if (!account || !account.id) {
+    const newAccount: Account = {
+      email,
+      name,
+      createdTime: now,
+    };
+
+    accountId = await storage.addAccount(newAccount);
+    console.log(`Debug account created: ${accountId}`);
+    account = { id: accountId, email, name, createdTime: now } as Account;
+  } else {
+    accountId = account.id;
+  }
+
+  const existingKeys: AccessKey[] = await storage.getAccessKeys(accountId).catch(() => []);
+  const hasDebugKey = existingKeys.some((key: AccessKey) => key.name === accessKeyValue || key.friendlyName === friendlyName);
+
+  if (!hasDebugKey) {
+    const accessKey: AccessKey = {
+      name: accessKeyValue,
+      friendlyName,
+      description: friendlyName,
+      createdBy,
+      createdTime: now,
+      expires: now + ttl,
+    };
+
+    await storage.addAccessKey(accountId, accessKey);
+    console.log("Debug access key created");
+  }
+
+  return accountId;
+}
+
 function bodyParserErrorHandler(err: any, req: express.Request, res: express.Response, next: Function): void {
   if (err) {
     if (err.message === "invalid json" || (err.name === "SyntaxError" && ~err.stack.indexOf("body-parser"))) {
@@ -50,6 +101,7 @@ export function start(done: (err?: any, server?: express.Express, storage?: Stor
   let storage: Storage;
   let isKeyVaultConfigured: boolean;
   let keyvaultClient: any;
+  let debugAccountId: string | undefined;
 
   q<void>(null)
     .then(async () => {
@@ -68,6 +120,11 @@ export function start(done: (err?: any, server?: express.Express, storage?: Stor
         const keyvaultClient = new SecretClient(url, credential);
         const secret = await keyvaultClient.getSecret(`storage-${process.env.AZURE_STORAGE_ACCOUNT}`);
         storage = new AzureStorage(process.env.AZURE_STORAGE_ACCOUNT, secret);
+      }
+    })
+    .then(async () => {
+      if (process.env.DISABLE_MANAGEMENT !== "true" && process.env.DEBUG_DISABLE_AUTH === "true") {
+        debugAccountId = await ensureDebugAccount(storage);
       }
     })
     .then(() => {
@@ -154,37 +211,18 @@ export function start(done: (err?: any, server?: express.Express, storage?: Stor
         if (process.env.DEBUG_DISABLE_AUTH === "true") {
           console.log("=== DEBUG MODE ENABLED ===");
 
-          // Create debug user account synchronously
-          try {
-            storage.addAccount({ email: "debug@example.com" }).then((accountId) => {
-              console.log("Debug account created:", accountId);
-            }).catch(() => {
-              console.log("Debug account already exists");
-            });
-          } catch (err) {
-            console.log("Account creation error handled");
-          }
-
           // Add debug authentication endpoints
           app.get("/authenticated", (req, res) => {
             res.send({ authenticated: true });
           });
 
-          // Add a direct apps endpoint for testing
-          app.post("/v0.1/apps", (req, res) => {
-            console.log("Direct apps endpoint hit:", req.body);
-            res.json({ 
-              app: { 
-                name: req.body.name,
-                id: "test-app-id",
-                collaborators: { "debug@example.com": { permission: "Owner" } }
-              }
-            });
-          });
+          if (!debugAccountId) {
+            throw new Error("Failed to initialize debug account");
+          }
 
           app.use((req, res, next) => {
             req.user = {
-              id: "default-user",
+              id: debugAccountId,
             };
             next();
           });
