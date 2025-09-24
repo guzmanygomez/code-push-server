@@ -154,9 +154,32 @@ export function start(done: (err?: any, server?: express.Express, storage?: Stor
         if (process.env.DEBUG_DISABLE_AUTH === "true") {
           console.log("=== DEBUG MODE ENABLED ===");
 
+          // Create debug user account synchronously
+          try {
+            storage.addAccount({ email: "debug@example.com" }).then((accountId) => {
+              console.log("Debug account created:", accountId);
+            }).catch(() => {
+              console.log("Debug account already exists");
+            });
+          } catch (err) {
+            console.log("Account creation error handled");
+          }
+
           // Add debug authentication endpoints
           app.get("/authenticated", (req, res) => {
             res.send({ authenticated: true });
+          });
+
+          // Add a direct apps endpoint for testing
+          app.post("/v0.1/apps", (req, res) => {
+            console.log("Direct apps endpoint hit:", req.body);
+            res.json({ 
+              app: { 
+                name: req.body.name,
+                id: "test-app-id",
+                collaborators: { "debug@example.com": { permission: "Owner" } }
+              }
+            });
           });
 
           app.use((req, res, next) => {
