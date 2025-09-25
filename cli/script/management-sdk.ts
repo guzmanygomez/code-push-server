@@ -305,9 +305,9 @@ class AccountManager {
   ): Promise<void> {
     return Promise<void>((resolve, reject, notify) => {
       updateMetadata.appVersion = targetBinaryVersion;
-      const request: superagent.Request<any> = superagent.post(
-        this._serverUrl + urlEncode([`/apps/${appName}/deployments/${deploymentName}/release`])
-      );
+      const normalizedServerUrl = this._serverUrl.endsWith("/") ? this._serverUrl.slice(0, -1) : this._serverUrl;
+      const releaseUrl = normalizedServerUrl + "/v0.1" + urlEncode([`/apps/${appName}/deployments/${deploymentName}/release`]);
+      const request: superagent.Request<any> = superagent.post(releaseUrl);
 
       this.attachCredentials(request);
 

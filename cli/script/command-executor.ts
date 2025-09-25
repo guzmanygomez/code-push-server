@@ -1579,7 +1579,8 @@ function isCommandOptionSpecified(option: any): boolean {
 }
 
 function getSdk(accessKey: string, headers: Headers, customServerUrl: string): AccountManager {
-  const sdk: any = new AccountManager(accessKey, CLI_HEADERS, customServerUrl);
+  const resolvedServerUrl = customServerUrl || process.env.SERVER_URL;
+  const sdk: any = new AccountManager(accessKey, CLI_HEADERS, resolvedServerUrl);
   /*
    * If the server returns `Unauthorized`, it must be due to an invalid
    * (or expired) access key. For convenience, we patch every SDK call

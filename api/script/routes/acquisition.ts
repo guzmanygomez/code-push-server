@@ -25,10 +25,33 @@ export interface AcquisitionConfig {
   redisManager: redis.RedisManager;
 }
 
+function sanitizeClientQuery(query: Record<string, unknown>): any {
+  if (!query) {
+    return {};
+  }
+
+  const sanitizedQuery: any = { ...query };
+  delete sanitizedQuery.clientUniqueId;
+  delete sanitizedQuery.client_unique_id;
+
+  return sanitizedQuery;
+}
+
 function getUrlKey(originalUrl: string): string {
-  const obj: any = URL.parse(originalUrl, /*parseQueryString*/ true);
-  delete obj.query.clientUniqueId;
-  return obj.pathname + "?" + queryString.stringify(obj.query);
+  const parsedUrl: any = URL.parse(originalUrl, /*parseQueryString*/ true);
+  const sanitizedQuery = sanitizeClientQuery(parsedUrl.query ?? {});
+  const queryStringValue = queryString.stringify(sanitizedQuery);
+  return parsedUrl.pathname + (queryStringValue ? "?" + queryStringValue : "");
+}
+
+function getCacheKey(req: express.Request): string {
+  if (req.method === "POST") {
+    const sanitizedBody = sanitizeClientQuery(req.body ?? {});
+    const queryStringValue = queryString.stringify(sanitizedBody);
+    return req.path + (queryStringValue ? "?" + queryStringValue : "");
+  }
+
+  return getUrlKey(req.originalUrl);
 }
 
 function createResponseUsingStorage(
@@ -36,17 +59,28 @@ function createResponseUsingStorage(
   res: express.Response,
   storage: storageTypes.Storage
 ): Promise<redis.CacheableResponse> {
-  const deploymentKey: string = String(req.query.deploymentKey || req.query.deployment_key);
-  const appVersion: string = String(req.query.appVersion || req.query.app_version);
-  const packageHash: string = String(req.query.packageHash || req.query.package_hash);
-  const isCompanion: string = String(req.query.isCompanion || req.query.is_companion);
+  const source = req.method === "POST" ? req.body || {} : req.query;
+
+  const deploymentKey: string = (source.deploymentKey || source.deployment_key || "") as string;
+  const appVersion: string = (source.appVersion || source.app_version || "") as string;
+  const packageHash: string = (source.packageHash || source.package_hash || "") as string;
+  const labelField = source.label || source.previousLabel || source.previous_label;
+  const label =
+    typeof labelField === "string" && labelField
+      ? labelField
+      : req.method === "GET" && typeof req.query.label === "string"
+      ? req.query.label
+      : typeof source.label === "string"
+      ? source.label
+      : "";
+  const isCompanion: string = (source.isCompanion || source.is_companion || "") as string;
 
   const updateRequest: UpdateCheckRequest = {
-    deploymentKey: deploymentKey,
-    appVersion: appVersion,
-    packageHash: packageHash,
+    deploymentKey,
+    appVersion,
+    packageHash,
     isCompanion: isCompanion && isCompanion.toLowerCase() === "true",
-    label: req.query.label && String(req.query.label),
+    label,
   };
 
   let originalAppVersion: string;
@@ -70,10 +104,15 @@ function createResponseUsingStorage(
     }
   }
 
-  if (validationUtils.isValidUpdateCheckRequest(updateRequest)) {
-    return storage.getPackageHistoryFromDeploymentKey(updateRequest.deploymentKey).then((packageHistory: storageTypes.Package[]) => {
-      const updateObject: UpdateCheckCacheResponse = acquisitionUtils.getUpdatePackageInfo(packageHistory, updateRequest);
-      if ((isMissingPatchVersion || isPlainIntegerNumber) && updateObject.originalPackage.appVersion === updateRequest.appVersion) {
+  const normalizedRequest: UpdateCheckRequest = {
+    ...updateRequest,
+    label: typeof label === "string" ? label : undefined,
+  };
+
+  if (validationUtils.isValidUpdateCheckRequest(normalizedRequest)) {
+    return storage.getPackageHistoryFromDeploymentKey(normalizedRequest.deploymentKey).then((packageHistory: storageTypes.Package[]) => {
+      const updateObject: UpdateCheckCacheResponse = acquisitionUtils.getUpdatePackageInfo(packageHistory, normalizedRequest);
+      if ((isMissingPatchVersion || isPlainIntegerNumber) && updateObject.originalPackage.appVersion === normalizedRequest.appVersion) {
         // Set the appVersion of the response to the original one with the missing patch version or plain number
         updateObject.originalPackage.appVersion = originalAppVersion;
         if (updateObject.rolloutPackage) {
@@ -141,10 +180,11 @@ export function getAcquisitionRouter(config: AcquisitionConfig): express.Router 
 
   const updateCheck = function (newApi: boolean) {
     return function (req: express.Request, res: express.Response, next: (err?: any) => void) {
-      const deploymentKey: string = String(req.query.deploymentKey || req.query.deployment_key);
+      const source = req.method === "POST" ? req.body || {} : req.query;
+      const deploymentKey: string = String(source.deploymentKey || source.deployment_key || "");
+      const clientUniqueId: string = String(source.clientUniqueId || source.client_unique_id || "");
       const key: string = redis.Utilities.getDeploymentKeyHash(deploymentKey);
-      const clientUniqueId: string = String(req.query.clientUniqueId || req.query.client_unique_id);
-      const url: string = getUrlKey(req.originalUrl);
+      const url: string = getCacheKey(req);
       let fromCache: boolean = true;
       let redisError: Error;
 
@@ -287,13 +327,40 @@ export function getAcquisitionRouter(config: AcquisitionConfig): express.Router 
   };
 
   router.get("/updateCheck", updateCheck(false));
+  router.post("/updateCheck", updateCheck(false));
   router.get("/v0.1/public/codepush/update_check", updateCheck(true));
+  router.post("/v0.1/public/codepush/update_check", updateCheck(true));
 
   router.post("/reportStatus/deploy", reportStatusDeploy);
   router.post("/v0.1/public/codepush/report_status/deploy", reportStatusDeploy);
 
   router.post("/reportStatus/download", reportStatusDownload);
   router.post("/v0.1/public/codepush/report_status/download", reportStatusDownload);
+
+  // General reportStatus endpoint - route to deploy by default for compatibility
+  router.post("/reportStatus", reportStatusDeploy);
+
+  // Storage endpoint for serving package blobs directly
+  router.get("/storagev2/:blobId", (req: express.Request, res: express.Response, next: (err?: any) => void) => {
+    const blobId = req.params.blobId;
+    if (!blobId) {
+      return errorUtils.sendMalformedRequestError(res, "Blob ID is required");
+    }
+
+    storage
+      .getBlobUrl(blobId)
+      .then((blobUrl: string) => {
+        // Redirect to the actual blob URL for download
+        res.redirect(302, blobUrl);
+      })
+      .catch((error: storageTypes.StorageError) => {
+        if (error.code === storageTypes.ErrorCode.NotFound) {
+          errorUtils.sendNotFoundError(res, "Package not found");
+        } else {
+          errorUtils.restErrorHandler(res, error, next);
+        }
+      });
+  });
 
   return router;
 }
