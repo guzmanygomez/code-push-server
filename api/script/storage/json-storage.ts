@@ -43,7 +43,7 @@ export class JsonStorage implements storage.Storage {
   private static CollaboratorNotFound: string = "The specified e-mail address doesn't represent a registered user";
   private _blobServerPromise: Promise<http.Server>;
 
-  constructor(public disablePersistence: boolean = true) {
+  constructor(public disablePersistence: boolean = false) {
     this.loadStateAsync(); // Attempts to load real data if any exists
   }
 
