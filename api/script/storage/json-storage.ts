@@ -539,13 +539,12 @@ export class JsonStorage implements storage.Storage {
   }
 
   public async getBlobUrl(blobId: string): Promise<string> {
-    return this.getBlobServer().then((server: http.Server) => {
-      const address = server.address();
-      if (typeof address === "object" && address !== null) {
-        return `http://${address.address}:${address.port}/${blobId}`;
-      }
-      return `http://${address}/${blobId}`;
-    });
+    const serverUrl = process.env.SERVER_URL || "http://localhost:3000";
+    return Promise.resolve(`${serverUrl}/storagev2/${blobId}`);
+  }
+
+  public getBlobContent(blobId: string): string | null {
+    return this.blobs[blobId] || null;
   }
 
   public async removeBlob(blobId: string): Promise<void> {

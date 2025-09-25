@@ -347,19 +347,29 @@ export function getAcquisitionRouter(config: AcquisitionConfig): express.Router 
       return errorUtils.sendMalformedRequestError(res, "Blob ID is required");
     }
 
-    storage
-      .getBlobUrl(blobId)
-      .then((blobUrl: string) => {
-        // Redirect to the actual blob URL for download
-        res.redirect(302, blobUrl);
-      })
-      .catch((error: storageTypes.StorageError) => {
-        if (error.code === storageTypes.ErrorCode.NotFound) {
-          errorUtils.sendNotFoundError(res, "Package not found");
-        } else {
-          errorUtils.restErrorHandler(res, error, next);
-        }
-      });
+    // Check if we're using JsonStorage (which stores blobs in memory)
+    if ((storage as any).getBlobContent) {
+      const blobContent = (storage as any).getBlobContent(blobId);
+      if (blobContent) {
+        res.send(blobContent);
+      } else {
+        errorUtils.sendNotFoundError(res, "Package not found");
+      }
+    } else {
+      // For other storage types (like Azure), redirect to the blob URL
+      storage
+        .getBlobUrl(blobId)
+        .then((blobUrl: string) => {
+          res.redirect(302, blobUrl);
+        })
+        .catch((error: storageTypes.StorageError) => {
+          if (error.code === storageTypes.ErrorCode.NotFound) {
+            errorUtils.sendNotFoundError(res, "Package not found");
+          } else {
+            errorUtils.restErrorHandler(res, error, next);
+          }
+        });
+    }
   });
 
   return router;
