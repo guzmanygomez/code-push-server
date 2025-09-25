@@ -351,6 +351,8 @@ export function getAcquisitionRouter(config: AcquisitionConfig): express.Router 
     if ((storage as any).getBlobContent) {
       const blobContent = (storage as any).getBlobContent(blobId);
       if (blobContent) {
+        // Set proper content type for binary data
+        res.setHeader('Content-Type', 'application/octet-stream');
         res.send(blobContent);
       } else {
         errorUtils.sendNotFoundError(res, "Package not found");

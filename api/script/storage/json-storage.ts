@@ -23,7 +23,7 @@ export class JsonStorage implements storage.Storage {
   public apps: { [id: string]: storage.App } = {};
   public deployments: { [id: string]: storage.Deployment } = {};
   public packages: { [id: string]: storage.Package } = {};
-  public blobs: { [id: string]: string } = {};
+  public blobs: { [id: string]: Buffer } = {};
   public accessKeys: { [id: string]: storage.AccessKey } = {};
 
   public accountToAppsMap: { [id: string]: string[] } = {};
@@ -525,16 +525,17 @@ export class JsonStorage implements storage.Storage {
   }
 
   public async addBlob(blobId: string, stream: stream.Readable, streamLength: number): Promise<string> {
-    this.blobs[blobId] = "";
+    const chunks: Buffer[] = [];
     return new Promise<string>((resolve: (blobId: string) => void) => {
       stream
-        .on("data", (data: string) => {
-          this.blobs[blobId] += data;
+        .on("data", (data: Buffer) => {
+          chunks.push(data);
         })
         .on("end", () => {
+          this.blobs[blobId] = Buffer.concat(chunks);
           resolve(blobId);
+          this.saveStateAsync();
         });
-      this.saveStateAsync();
     });
   }
 
@@ -543,7 +544,7 @@ export class JsonStorage implements storage.Storage {
     return Promise.resolve(`${serverUrl}/storagev2/${blobId}`);
   }
 
-  public getBlobContent(blobId: string): string | null {
+  public getBlobContent(blobId: string): Buffer | null {
     return this.blobs[blobId] || null;
   }
 
